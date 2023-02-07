@@ -1,0 +1,8 @@
+# Tech Stack(s)
+- dotenv (environment variables)
+- express (express module)
+- mongoose (mongodb library)
+- md5 (password hashing)
+- body-parser (html content to app.js)
+- ejs (templating)
+- moongoose-encryption (database encryption)
