@@ -9,6 +9,7 @@
 - moongoose-encryption.js (database encryption)
 - bcrypt (salting and hashing encryption)
 - passport, passport-local, passport-local-mongoose, express-session
+- mongoose-findorcreate
 ## Database
 - mongoDB
 ## Backend
