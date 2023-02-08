@@ -6,3 +6,4 @@
 - body-parser (html content to app.js)
 - ejs (templating)
 - moongoose-encryption (database encryption)
+- bcrypt (salting and hashing encryption)
