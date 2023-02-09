@@ -10,6 +10,7 @@
 - bcrypt (salting and hashing encryption)
 - passport, passport-local, passport-local-mongoose, express-session
 - mongoose-findorcreate
+- Google & Facebook OAuth 2.0 Authentication
 ## Database
 - mongoDB
 ## Backend
