@@ -2,36 +2,32 @@
 
 //---- Modules ----//
 require('dotenv').config() //Always at the top
-
 const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require('mongoose');
-
-//passport, passport-local, passport-local-mongoose, express-session
 const session = require('express-session');
 const passport = require("passport");
 const passportLocalMoongoose = require("passport-local-mongoose");
-
-//GoogleOauth
-const GoogleStrategy = require('passport-google-oauth20').Strategy;
-
 const findOrCreate = require('mongoose-findorcreate');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const FacebookStrategy = require('passport-facebook');
 
+//---- Modules Usage ----//
 const app = express();
-app.set('view engine', 'ejs');
+app.use(express.static("public"));
 
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static("public")); //
+app.set('view engine', 'ejs'); //ejs
+
+app.use(bodyParser.urlencoded({ extended: true })); //bodyParser
 
 app.use(session({
     secret: "Our little secret.",
     resave: false,
     saveUninitialized: false
-}));
-
-app.use(passport.initialize());
-app.use(passport.session());
+})); //session
+app.use(passport.initialize()); //session
+app.use(passport.session()); //session
 
 passport.use(new GoogleStrategy({
     clientID: process.env.CLIENT_ID,
@@ -45,25 +41,38 @@ passport.use(new GoogleStrategy({
             return cb(err, user);
         });
     }
-));
+)); //GoogleStrategy
 
-//---- MongoDB-Moongoose Connection DB, Schema, Model ----//
+passport.use(new FacebookStrategy({
+    clientID: process.env.FACEBOOK_APP_ID,
+    clientSecret: process.env.FACEBOOK_APP_SECRET,
+    callbackURL: "http://localhost:3000/auth/facebook/secrets"
+  },
+  function(accessToken, refreshToken, profile, cb) {
+    User.findOrCreate({ facebookId: profile.id }, function (err, user) {
+      return cb(err, user);
+    });
+  }
+)); //FacebookStrategy
+
+//---- MongoDB-Moongoose Connection DB, Schema, Model, passport-local-mongoose strategy ----//
 mongoose.set('strictQuery', false);
-mongoose.connect('mongodb://127.0.0.1:27017/userDB');
+mongoose.connect('mongodb://127.0.0.1:27017/userDB'); //establish connection & create userDB database
 
 const userSchema = new mongoose.Schema({
     username: String,
     password: String,
     googleId: String
-});
+}); 
 
 userSchema.plugin(passportLocalMoongoose); //salt & hash variables to moongodb
-userSchema.plugin(findOrCreate);
+userSchema.plugin(findOrCreate); //mongoose-findorcreate
 
-const User = new mongoose.model('User', userSchema); //
+const User = new mongoose.model('User', userSchema);
 
-passport.use(User.createStrategy());
+passport.use(User.createStrategy()); //passport-local-mongoose strategy
 
+//---- Serialize and deserialize ----//
 passport.serializeUser(function (user, cb) {
     process.nextTick(function () {
         return cb(null, {
@@ -84,16 +93,6 @@ passport.deserializeUser(function (user, cb) {
 app.get("/", function (req, res) {
     res.render('home');
 });
-
-app.get('/auth/google',
-    passport.authenticate('google', { scope: ['profile'] }));
-
-app.get('/auth/google/secrets',
-    passport.authenticate('google', { failureRedirect: '/login' }),
-    function (req, res) {
-        // Successful authentication, redirect home.
-        res.redirect('/secrets');
-    });
 
 app.get("/login", function (req, res) {
     res.render('login');
@@ -119,6 +118,28 @@ app.get("/logout", function (req, res) {
         }
     });
 });
+
+//---- Google Auth Get Route ----//
+app.get('/auth/google',
+    passport.authenticate('google', { scope: ['profile'] }));
+
+app.get('/auth/google/secrets',
+    passport.authenticate('google', { failureRedirect: '/login' }),
+    function (req, res) {
+        // Successful authentication, redirect home.
+        res.redirect('/secrets');
+    });
+
+//---- Facebook Auth Get Route ----//
+app.get('/auth/facebook',
+  passport.authenticate('facebook'));
+
+  app.get('/auth/facebook/secrets',
+  passport.authenticate('facebook', { failureRedirect: '/login' }),
+  function(req, res) {
+    // Successful authentication, redirect home.
+    res.redirect('/secrets');
+  });
 
 //---- Post Route ----//
 app.post("/register", function (req, res) {
@@ -152,7 +173,7 @@ app.post("/login", function (req, res) {
     });
 });
 
-//---- Server Connection ----//
+//---- Server Connection Listen ----//
 app.listen(3000, function () {
     console.log("Server started on port 3000");
 }); //
