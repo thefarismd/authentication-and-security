@@ -47,12 +47,12 @@ passport.use(new FacebookStrategy({
     clientID: process.env.FACEBOOK_APP_ID,
     clientSecret: process.env.FACEBOOK_APP_SECRET,
     callbackURL: "http://localhost:3000/auth/facebook/secrets"
-  },
-  function(accessToken, refreshToken, profile, cb) {
-    User.findOrCreate({ facebookId: profile.id }, function (err, user) {
-      return cb(err, user);
-    });
-  }
+},
+    function (accessToken, refreshToken, profile, cb) {
+        User.findOrCreate({ facebookId: profile.id }, function (err, user) {
+            return cb(err, user);
+        });
+    }
 )); //FacebookStrategy
 
 //---- MongoDB-Moongoose Connection DB, Schema, Model, passport-local-mongoose strategy ----//
@@ -62,8 +62,9 @@ mongoose.connect('mongodb://127.0.0.1:27017/userDB'); //establish connection & c
 const userSchema = new mongoose.Schema({
     username: String,
     password: String,
-    googleId: String
-}); 
+    googleId: String,
+    secret: String
+});
 
 userSchema.plugin(passportLocalMoongoose); //salt & hash variables to moongodb
 userSchema.plugin(findOrCreate); //mongoose-findorcreate
@@ -104,11 +105,20 @@ app.get("/register", function (req, res) {
 
 app.get("/secrets", function (req, res) {
 
-    if (req.isAuthenticated()) {
-        res.render("secrets");
-    } else {
-        res.redirect("/login");
-    }
+    // if (req.isAuthenticated()) {
+    //     res.render("secrets");
+    // } else {
+    //     res.redirect("/login");
+    // }
+    User.find({ secret: { $ne: null } }, function (err, foundUsers) {
+        if (err) {
+            console.log(err);
+        } else {
+            if (foundUsers) {
+                res.render("secrets", { usersWithSecrets: foundUsers });
+            };
+        };
+    });
 });
 
 app.get("/logout", function (req, res) {
@@ -117,6 +127,16 @@ app.get("/logout", function (req, res) {
             res.redirect('/');
         }
     });
+});
+
+app.get("/submit", function (req, res) {
+
+    if (req.isAuthenticated()) {
+        res.render("submit");
+    } else {
+        res.redirect("/login");
+    }
+
 });
 
 //---- Google Auth Get Route ----//
@@ -132,14 +152,14 @@ app.get('/auth/google/secrets',
 
 //---- Facebook Auth Get Route ----//
 app.get('/auth/facebook',
-  passport.authenticate('facebook'));
+    passport.authenticate('facebook'));
 
-  app.get('/auth/facebook/secrets',
-  passport.authenticate('facebook', { failureRedirect: '/login' }),
-  function(req, res) {
-    // Successful authentication, redirect home.
-    res.redirect('/secrets');
-  });
+app.get('/auth/facebook/secrets',
+    passport.authenticate('facebook', { failureRedirect: '/login' }),
+    function (req, res) {
+        // Successful authentication, redirect home.
+        res.redirect('/secrets');
+    });
 
 //---- Post Route ----//
 app.post("/register", function (req, res) {
@@ -170,6 +190,24 @@ app.post("/login", function (req, res) {
                 res.redirect("/secrets");
             });
         }
+    });
+});
+
+app.post("/submit", function (req, res) {
+    const submittedSecret = req.body.secret;
+    console.log(req.user.id);
+
+    User.findById(req.user.id, function (err, foundUser) {
+        if (err) {
+            console.log(err);
+        } else {
+            if (foundUser) {
+                foundUser.secret = submittedSecret;
+                foundUser.save(function () {
+                    res.redirect("/secrets");
+                });
+            };
+        };
     });
 });
 
